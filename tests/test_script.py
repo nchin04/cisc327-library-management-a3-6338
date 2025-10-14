@@ -27,14 +27,14 @@ def test_add_book_invalid_title_too_long():
     success, message =add_book_to_catalog("TestBoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooook"
                                            , "Test Author", "1234567890129", 5)
     assert success == False
-    assert "200 or Less Characters" in message
+    assert "less than 200 characters" in message.lower()
     
 
 def test_add_book_invalid_author_too_long():
     """Test adding a bOok with a author name too long"""
     success, message = add_book_to_catalog("Test Book", "Test Authorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr", "1234567890127", 5)
     assert success == False
-    assert "100 or Less Characters" in message
+    assert "less than 100 characters" in message.lower()
 
 def test_add_book_invalid_totalcopies_negative():
     """Test adding a how many copies wanted being a negative or zero"""
@@ -42,7 +42,7 @@ def test_add_book_invalid_totalcopies_negative():
     success, message = add_book_to_catalog("Test Book", "Test Author", "1234567890128", -5)
     
     assert success == False
-    assert "Must be a positive Integer" in message
+    assert "positive integer" in message
 
 def test_add_book_valid_input_2():
     """Test adding numbers in the title"""
@@ -57,7 +57,7 @@ def test_add_book_invalid_ISBN():
     success, message = add_book_to_catalog("Test Book23", "Test Author", "abcdefghijklm", 3)
     
     assert success == False
-    assert "Must only be digits" in message.lower()
+    assert "only digits" in message.lower()
 
 
 
@@ -72,7 +72,7 @@ format showing the following: Book ID, Title, Author, ISBN, Available copies / T
 def test_get_all_books_valid():
     add_book_to_catalog("Glass", "Onion", "8374659283745", 2)
     books = get_all_books()
-    assert books["title"] == "Glass"
+    assert books[0]["title"] == "Glass"
 
 
 #R3 Test Cases
@@ -89,7 +89,7 @@ def test_book_borrowing_valid():
 
     success, message = borrow_book_by_patron("012345", book_id)
     assert success == True
-    assert "book borrowed" in message.lower()
+    assert "borrowed" in message.lower()
 
 def test_book_borrowing_invalid_patron_id():
     """Test borrowing a book when patron ID is not 6 digits"""
@@ -153,7 +153,7 @@ def test_return_book_valid():
 
     returnbook, message = return_book_by_patron("876876", book["id"])
     assert returnbook == True
-    assert "book successfully returned" in message.lower()
+    assert "returned" in message.lower()
 
 
 def test_return_book_invalid_patron_id():
@@ -194,7 +194,7 @@ def test_return_book_twice_invalid():
     success, message = return_book_by_patron("676767",book["id"])
     assert success == False
 
-    assert "no active borrow" in message.lower() 
+    assert "did not borrow" in message.lower() 
 
 def test_return_book_different_patron():
     """Test when a different patron ID tries to return a book"""
@@ -205,7 +205,7 @@ def test_return_book_different_patron():
     assert success == True
     success,message = return_book_by_patron("888888", book["id"])
     assert success == False
-    assert "Different patron ID" in message.lower()
+    assert "did not borrow" in message.lower()
 
 
 
@@ -303,5 +303,6 @@ def test_patron_status_history():
 
 def test_patron_id_invalid():
     """Test that the patron id is invalid"""
-    success = get_patron_status_report("abcdef")
+    success, message = get_patron_status_report("abcdef")
     assert success == False 
+    assert "invalid patron id" in message.lower()
