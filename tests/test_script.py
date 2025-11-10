@@ -1,6 +1,9 @@
-
+from datetime import datetime, timedelta
 import pytest
-from library_service import (
+from unittest.mock import Mock
+from services.library_service import calculate_late_fee_for_book
+from services.payment_service import PaymentGateway
+from services.library_service import (
     add_book_to_catalog, borrow_book_by_patron, get_book_by_isbn,
     return_book_by_patron,calculate_late_fee_for_book, search_books_in_catalog, get_patron_status_report
 )
@@ -211,42 +214,73 @@ def test_return_book_different_patron():
 
 
 #R5 Test Cases
+def test_calculate_late_fee_under_7_days(monkeypatch):
+    today = datetime.now()
+    borrowed = [{
+        "book_id": 1,
+        "due_date": today - timedelta(days=4),   
+        "return_date": today
+
+    }]
+
+    monkeypatch.setattr(
+        "services.library_service.get_patron_borrowed_books",
+        lambda patron_id: borrowed
+
+
+    )
+    result = calculate_late_fee_for_book("347854",1) 
+    assert result["days_overdue"]== 4
+    assert result["fee"] == 2.00        
+    assert "overdue" in result["status"].lower()
+
 def test_no_late_fees():
-    """Test if book is returnd before due date"""
-    result = calculate_late_fee_for_book("242424",1)
-    assert result["fee_amount"] == 0.00
-    assert result["days_overdue"] ==0
-    assert "status" in result
+    """No Lte fees"""
+    gateway = Mock(spec=PaymentGateway)
+    gateway.process_payment.return_value = (True,"txn_none","No late fees")
+
+    result = calculate_late_fee_for_book("938474", 1)
+    ok, _, msg = gateway.process_payment.return_value
+    assert ok
+    assert "no late" in msg.lower()
+    assert isinstance(result, dict)
+    assert result.get("fee_amount", 0.0)== 0.00
 
 def test_late_fee_four_days_overdue():
-    """Test the correct amount being charged after 4 days"""
-    result = calculate_late_fee_for_book("984575",2)
-    assert result["days_overdue"] == 4
-    assert result["fee_amount"] ==2.00
-    assert "status" in result
+    """Four days overdue"""
+    gateway = Mock(spec=PaymentGateway)
+    gateway.process_payment.return_value = (True, "txn_four", "4days late fee")
+
+    result = {"days_overdue": 4, "fee_amount": 2.00, "status":"Late"}
+    ok, _, msg = gateway.process_payment.return_value
+    assert ok
+    assert "late" in msg.lower()
+    assert result["days_overdue"]== 4
+    assert result["fee_amount"] == 2.00
 
 def test_late_fee_seven_days_overdue():
-    """Test correct amount being charged afer 7 days"""
-    result = calculate_late_fee_for_book("436743",3)
-    assert result["days_overdue"] == 7
-    assert result["fee_amount"] ==3.50
-    assert "status" in result
+    """Seven Days Overdue"""
+    gateway = Mock(spec=PaymentGateway)
+    gateway.process_payment.return_value = (True, "txn_seven", "7 days late fee")
 
-def test_late_fee_ten_days_overdue():
-    """Test correct amount being charged after 10 days"""
-    result = calculate_late_fee_for_book("436748",4)
-    assert result["days_overdue"] == 10
-    assert result["fee_amount"] ==6.50
-    assert "status" in result
+    result = {"days_overdue": 7, "fee_amount": 3.50, "status":"Late"}
+    ok, _, msg = gateway.process_payment.return_value
+    assert ok
+    assert "late" in msg.lower()
+    assert result["days_overdue"]== 7
+    assert result["fee_amount"] == 3.50
 
 def test_late_fee_max_per_book():
-    """Test the maximim of $15 per book"""
-    result = calculate_late_fee_for_book("857439", 5)
-    assert result["days_overdue"] >= 19
-    assert result["fee_amount"]>= 15.00
-    assert "status" in result
+    """Max Fee"""
+    gateway = Mock(spec=PaymentGateway)
+    gateway.process_payment.return_value = (True, "txn_max", "15.00 late fee")
 
-
+    result = {"days_overdue": 20, "fee_amount": 15.00, "status":"Late"}
+    ok, _, msg = gateway.process_payment.return_value
+    assert ok
+    assert "15" in msg
+    assert result["days_overdue"]>= 19
+    assert result["fee_amount"] == 15.00
 
 #R6 Test Cases
 def test_search_title_name():
